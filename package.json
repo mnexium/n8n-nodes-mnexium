@@ -1,17 +1,16 @@
 {
   "name": "n8n-nodes-mnexium",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Official Mnexium community node for n8n",
   "license": "MIT",
   "author": "Mnexium",
   "homepage": "https://www.mnexium.com",
   "bugs": {
-    "url": "https://github.com/mnexium/mnexium.com/issues"
+    "url": "https://github.com/mnexium/n8n-nodes-mnexium/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/mnexium/mnexium.com",
-    "directory": "integrations/n8n/n8n-nodes-mnexium"
+    "url": "git+https://github.com/mnexium/n8n-nodes-mnexium.git"
   },
   "engines": {
     "node": ">=20.19 <=24.x"
