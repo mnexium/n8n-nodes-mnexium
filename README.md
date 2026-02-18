@@ -107,5 +107,5 @@ npm run scan:n8n
 ## Links
 
 - Mnexium docs: [https://www.mnexium.com/docs](https://www.mnexium.com/docs)
-- Repository: [https://github.com/mnexium/mnexium.com/tree/main/integrations/n8n/n8n-nodes-mnexium](https://github.com/mnexium/mnexium.com/tree/main/integrations/n8n/n8n-nodes-mnexium)
-- Issues: [https://github.com/mnexium/mnexium.com/issues](https://github.com/mnexium/mnexium.com/issues)
+- Repository: [https://github.com/mnexium/n8n-nodes-mnexium](https://github.com/mnexium/n8n-nodes-mnexium)
+- Issues: [https://github.com/mnexium/n8n-nodes-mnexium/issues](https://github.com/mnexium/n8n-nodes-mnexium/issues)
