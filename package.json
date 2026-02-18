@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-mnexium",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Official Mnexium community node for n8n",
   "license": "MIT",
   "author": "Mnexium",
