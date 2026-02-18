@@ -1,0 +1,62 @@
+{
+  "name": "n8n-nodes-mnexium",
+  "version": "0.1.1",
+  "description": "Official Mnexium community node for n8n",
+  "license": "MIT",
+  "author": "Mnexium",
+  "homepage": "https://www.mnexium.com",
+  "bugs": {
+    "url": "https://github.com/mnexium/mnexium.com/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mnexium/mnexium.com",
+    "directory": "integrations/n8n/n8n-nodes-mnexium"
+  },
+  "engines": {
+    "node": ">=20.19 <=24.x"
+  },
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n",
+    "n8n-nodes",
+    "mnexium",
+    "memory",
+    "ai"
+  ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node scripts/clean-dist.mjs && tsc -p tsconfig.json && node scripts/copy-assets.mjs",
+    "dev": "tsc -w -p tsconfig.json",
+    "lint": "eslint . --ext .ts",
+    "prepublishOnly": "npm run build",
+    "scan:n8n": "npx @n8n/scan-community-package n8n-nodes-mnexium"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@typescript-eslint/eslint-plugin": "^8.20.0",
+    "@typescript-eslint/parser": "^8.20.0",
+    "eslint": "^9.18.0",
+    "n8n-workflow": "^1.82.0",
+    "typescript": "^5.9.3"
+  },
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/MnexiumApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/Mnexium/Mnexium.node.js"
+    ]
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
