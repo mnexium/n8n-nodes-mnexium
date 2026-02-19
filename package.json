@@ -1,9 +1,12 @@
 {
   "name": "n8n-nodes-mnexium",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Official Mnexium community node for n8n",
   "license": "MIT",
-  "author": "Mnexium",
+  "author": {
+    "name": "Mnexium",
+    "email": "mn@mnexium.com"
+  },
   "homepage": "https://www.mnexium.com",
   "bugs": {
     "url": "https://github.com/mnexium/n8n-nodes-mnexium/issues"
