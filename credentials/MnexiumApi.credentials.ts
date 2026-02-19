@@ -1,6 +1,7 @@
 import type {
 	IAuthenticateGeneric,
 	ICredentialType,
+	ICredentialTestRequest,
 	Icon,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -10,6 +11,12 @@ export class MnexiumApi implements ICredentialType {
 	displayName = 'Mnexium API + Model Keys';
 	icon: Icon = 'fa:shield-alt';
 	documentationUrl = 'https://www.mnexium.com/docs';
+	test: ICredentialTestRequest = {
+		request: {
+			method: 'GET',
+			url: 'https://www.mnexium.com/api/v1/memory/policies',
+		},
+	};
 
 	properties: INodeProperties[] = [
 		{
