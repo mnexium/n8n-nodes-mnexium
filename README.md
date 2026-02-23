@@ -62,6 +62,11 @@ For `Chat -> Message a Model`:
 - `User Message` is the primary input.
 - If empty, the node can fall back to incoming fields such as `message`, `text`, `input`, or `prompt`.
 - Optional Mnexium controls include `subject_id`, `chat_id`, `learn`, `history`, `recall`, `log`, and summarization/prompt policy options.
+- Advanced records controls are available for `mnx.records`:
+  - `Records Learn Mode`: `off | auto | force`
+  - `Records Tables (JSON Array)`: allowlist for extraction targets
+  - `Records Sync`: wait for write completion before response
+  - `Records Recall`: inject relevant records into context
 
 ## Custom API Call
 

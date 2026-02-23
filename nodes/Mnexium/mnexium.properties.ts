@@ -521,6 +521,57 @@ export const mnexiumProperties: INodeProperties[] = [
 		displayOptions: { show: { resource: ['chat'], operation: ['chatCompletions'] } },
 	},
 	{
+		displayName: 'Records Recall',
+		name: 'chatRecordsRecall',
+		type: 'boolean',
+		default: false,
+		displayOptions: { show: { resource: ['chat'], operation: ['chatCompletions'], chatShowAdvancedOptions: [true] } },
+		description: 'Enable record recall context injection for this chat request.',
+	},
+	{
+		displayName: 'Records Learn Mode',
+		name: 'chatRecordsLearnMode',
+		type: 'options',
+		default: 'off',
+		displayOptions: { show: { resource: ['chat'], operation: ['chatCompletions'], chatShowAdvancedOptions: [true] } },
+		description: 'Set records extraction behavior for this request.',
+		options: [
+			{ name: 'Off', value: 'off' },
+			{ name: 'Auto', value: 'auto' },
+			{ name: 'Force', value: 'force' },
+		],
+	},
+	{
+		displayName: 'Records Tables (JSON Array)',
+		name: 'chatRecordsTablesJson',
+		type: 'json',
+		default: '[]',
+		displayOptions: {
+			show: {
+				resource: ['chat'],
+				operation: ['chatCompletions'],
+				chatShowAdvancedOptions: [true],
+				chatRecordsLearnMode: ['auto', 'force'],
+			},
+		},
+		description: 'Optional allowlist of table names used for records extraction (for example ["orders","customers"]).',
+	},
+	{
+		displayName: 'Records Sync',
+		name: 'chatRecordsSync',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: ['chat'],
+				operation: ['chatCompletions'],
+				chatShowAdvancedOptions: [true],
+				chatRecordsLearnMode: ['auto', 'force'],
+			},
+		},
+		description: 'If true, waits for records write completion before returning the response.',
+	},
+	{
 		displayName: 'Regenerate Trial Key',
 		name: 'chatRegenerateTrialKey',
 		type: 'boolean',

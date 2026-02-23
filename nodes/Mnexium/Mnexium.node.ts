@@ -175,6 +175,23 @@ export class Mnexium implements INodeType {
 						const systemPrompt = (this.getNodeParameter('chatSystemPrompt', i, '') as string).trim();
 						const memoryPolicy = (this.getNodeParameter('chatMemoryPolicy', i, '') as string).trim();
 						const summarize = this.getNodeParameter('chatSummarize', i, 'none') as string;
+						const recordsLearnMode = this.getNodeParameter('chatRecordsLearnMode', i, 'off') as string;
+						const recordsSync = parseBooleanParam(this.getNodeParameter('chatRecordsSync', i, false));
+						const recordsRecall = parseBooleanParam(this.getNodeParameter('chatRecordsRecall', i, false));
+						const recordsTables = parseJsonArray(
+							this.getNodeParameter('chatRecordsTablesJson', i, '[]'),
+							'Records Tables',
+							i,
+							node,
+						)
+							.map((table) => String(table).trim())
+							.filter(Boolean);
+
+						if (recordsSync && recordsLearnMode === 'off') {
+							throw new NodeOperationError(node, 'Records Sync requires Records Learn Mode set to Auto or Force', {
+								itemIndex: i,
+							});
+						}
 
 						if (subjectId) mnx.subject_id = subjectId;
 						if (chatId) mnx.chat_id = chatId;
@@ -186,6 +203,14 @@ export class Mnexium implements INodeType {
 						if (systemPrompt) mnx.system_prompt = systemPrompt;
 						if (memoryPolicy) mnx.memory_policy = memoryPolicy;
 						if (regenerateTrialKey) mnx.regenerate_key = true;
+						const records: IDataObject = {};
+						if (recordsRecall) records.recall = true;
+						if (recordsLearnMode === 'auto' || recordsLearnMode === 'force') {
+							records.learn = recordsLearnMode;
+							records.sync = recordsSync;
+							if (recordsTables.length > 0) records.tables = recordsTables;
+						}
+						if (Object.keys(records).length > 0) mnx.records = records;
 
 						if (Object.keys(mnx).length > 0) {
 							payload.mnx = mnx;
