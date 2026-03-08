@@ -9,14 +9,18 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 import {
+	computeWebhookSignature,
 	ensurePath,
 	extractExternalUserMessage,
 	hasHeader,
 	parseBooleanParam,
 	parseJsonArray,
 	parseJsonObject,
+	parseOptionalJsonArray,
+	parseOptionalJsonObject,
 	parseOptionalNumberString,
 	parseTriStateBoolean,
+	normalizeWebhookSignature,
 	setHeaderIfMissing,
 	setHeaderIfValue,
 } from './mnexium.helpers';
@@ -31,7 +35,7 @@ export class Mnexium implements INodeType {
 		version: 1,
 		subtitle:
 			'={{$parameter["resource"] === "chat" ? "message: text" : $parameter["resource"] + ": " + ($parameter["operation"] || "request")}}',
-		description: 'Use Mnexium memory, claims, profiles, state, records, prompts, and audit APIs',
+		description: 'Use Mnexium memory, claims, profiles, state, records, integrations, prompts, and audit APIs',
 		defaults: {
 			name: 'Mnexium',
 		},
@@ -76,6 +80,7 @@ export class Mnexium implements INodeType {
 			state: 'get',
 			recordSchema: 'list',
 			record: 'list',
+			integration: 'list',
 			prompt: 'list',
 			memoryPolicy: 'list',
 			audit: 'list',
@@ -96,6 +101,8 @@ export class Mnexium implements INodeType {
 				const qs: IDataObject = {};
 				let body: unknown;
 				const headers: IDataObject = {};
+				let sendBodyAsJson = true;
+				let rawRequestBody: string | undefined;
 				const useGenericRequest = resource === 'custom' && operation === 'request';
 
 				if (useGenericRequest) {
@@ -584,6 +591,211 @@ export class Mnexium implements INodeType {
 						break;
 					}
 
+					case 'integration': {
+						if (operation === 'list') {
+							path = '/api/v1/integrations';
+							qs.include_inactive = this.getNodeParameter('integrationIncludeInactive', i, false) as boolean;
+						} else if (operation === 'create') {
+							method = 'POST';
+							path = '/api/v1/integrations';
+							const outputMap = parseJsonArray(
+								this.getNodeParameter('integrationCreateOutputMapJson', i),
+								'Integration Output Map',
+								i,
+								node,
+							);
+							if (outputMap.length === 0) {
+								throw new NodeOperationError(node, 'Integration Output Map must include at least one mapping', {
+									itemIndex: i,
+								});
+							}
+
+							const payload: IDataObject = {
+								name: this.getNodeParameter('integrationCreateName', i) as string,
+								mode: this.getNodeParameter('integrationCreateMode', i, 'pull') as string,
+								scope: this.getNodeParameter('integrationCreateScope', i, 'project') as string,
+								method: this.getNodeParameter('integrationCreateMethod', i, 'GET') as string,
+								timeout_ms: this.getNodeParameter('integrationCreateTimeoutMs', i, 1500) as number,
+								cache_ttl_seconds: this.getNodeParameter('integrationCreateCacheTtlSeconds', i, 300) as number,
+								allow_live_fetch: this.getNodeParameter('integrationCreateAllowLiveFetch', i, false) as boolean,
+								output_map: outputMap,
+							};
+							const integrationId = (this.getNodeParameter('integrationCreateId', i, '') as string).trim();
+							const description = (this.getNodeParameter('integrationCreateDescription', i, '') as string).trim();
+							const endpointUrl = (this.getNodeParameter('integrationCreateEndpointUrl', i, '') as string).trim();
+							const authType = this.getNodeParameter('integrationCreateAuthType', i, 'none') as string;
+							const authSecret = (this.getNodeParameter('integrationCreateAuthSecret', i, '') as string).trim();
+							const webhookSecret = (this.getNodeParameter('integrationCreateWebhookSecret', i, '') as string).trim();
+							const headersTemplate = parseJsonObject(
+								this.getNodeParameter('integrationCreateHeadersTemplateJson', i, '{}'),
+								'Integration Headers Template',
+								i,
+								node,
+							);
+							const queryTemplate = parseJsonObject(
+								this.getNodeParameter('integrationCreateQueryTemplateJson', i, '{}'),
+								'Integration Query Template',
+								i,
+								node,
+							);
+							const bodyTemplate = parseJsonObject(
+								this.getNodeParameter('integrationCreateBodyTemplateJson', i, '{}'),
+								'Integration Body Template',
+								i,
+								node,
+							);
+							const authConfig = parseJsonObject(
+								this.getNodeParameter('integrationCreateAuthConfigJson', i, '{}'),
+								'Integration Auth Config',
+								i,
+								node,
+							);
+							if (integrationId) payload.integration_id = integrationId;
+							if (description) payload.description = description;
+							if (endpointUrl) payload.endpoint_url = endpointUrl;
+							if (Object.keys(headersTemplate).length > 0) payload.headers_template = headersTemplate;
+							if (Object.keys(queryTemplate).length > 0) payload.query_template = queryTemplate;
+							if (Object.keys(bodyTemplate).length > 0) payload.body_template = bodyTemplate;
+							if (authType !== 'none') payload.auth_type = authType;
+							if (Object.keys(authConfig).length > 0) payload.auth_config = authConfig;
+							if (authSecret) payload.auth_secret = authSecret;
+							if (webhookSecret) payload.webhook_secret = webhookSecret;
+							body = payload;
+						} else if (operation === 'get') {
+							path = `/api/v1/integrations/${encodeURIComponent(this.getNodeParameter('integrationId', i) as string)}`;
+						} else if (operation === 'update') {
+							method = 'PATCH';
+							path = `/api/v1/integrations/${encodeURIComponent(this.getNodeParameter('integrationId', i) as string)}`;
+							const payload: IDataObject = {};
+							const name = (this.getNodeParameter('integrationUpdateName', i, '') as string).trim();
+							const description = (this.getNodeParameter('integrationUpdateDescription', i, '') as string).trim();
+							const endpointUrl = (this.getNodeParameter('integrationUpdateEndpointUrl', i, '') as string).trim();
+							const mode = this.getNodeParameter('integrationUpdateMode', i, 'omit') as string;
+							const scope = this.getNodeParameter('integrationUpdateScope', i, 'omit') as string;
+							const methodValue = this.getNodeParameter('integrationUpdateMethod', i, 'omit') as string;
+							const allowLiveFetch = parseTriStateBoolean(this.getNodeParameter('integrationUpdateAllowLiveFetchMode', i, 'omit'));
+							const isActive = parseTriStateBoolean(this.getNodeParameter('integrationUpdateIsActiveMode', i, 'omit'));
+							const timeoutMs = parseOptionalNumberString(
+								this.getNodeParameter('integrationUpdateTimeoutMs', i, ''),
+								'Integration Timeout',
+								i,
+								node,
+							);
+							const cacheTtlSeconds = parseOptionalNumberString(
+								this.getNodeParameter('integrationUpdateCacheTtlSeconds', i, ''),
+								'Integration Cache TTL',
+								i,
+								node,
+							);
+							const outputMap = parseOptionalJsonArray(
+								this.getNodeParameter('integrationUpdateOutputMapJson', i, ''),
+								'Integration Output Map',
+								i,
+								node,
+							);
+							const headersTemplate = parseOptionalJsonObject(
+								this.getNodeParameter('integrationUpdateHeadersTemplateJson', i, ''),
+								'Integration Headers Template',
+								i,
+								node,
+							);
+							const queryTemplate = parseOptionalJsonObject(
+								this.getNodeParameter('integrationUpdateQueryTemplateJson', i, ''),
+								'Integration Query Template',
+								i,
+								node,
+							);
+							const bodyTemplate = parseOptionalJsonObject(
+								this.getNodeParameter('integrationUpdateBodyTemplateJson', i, ''),
+								'Integration Body Template',
+								i,
+								node,
+							);
+							const authConfig = parseOptionalJsonObject(
+								this.getNodeParameter('integrationUpdateAuthConfigJson', i, ''),
+								'Integration Auth Config',
+								i,
+								node,
+							);
+							const authType = this.getNodeParameter('integrationUpdateAuthType', i, 'omit') as string;
+							const authSecret = (this.getNodeParameter('integrationUpdateAuthSecret', i, '') as string).trim();
+							const webhookSecret = (this.getNodeParameter('integrationUpdateWebhookSecret', i, '') as string).trim();
+							if (name) payload.name = name;
+							if (description) payload.description = description;
+							if (endpointUrl) payload.endpoint_url = endpointUrl;
+							if (mode !== 'omit') payload.mode = mode;
+							if (scope !== 'omit') payload.scope = scope;
+							if (methodValue !== 'omit') payload.method = methodValue;
+							if (allowLiveFetch !== undefined) payload.allow_live_fetch = allowLiveFetch;
+							if (isActive !== undefined) payload.is_active = isActive;
+							if (timeoutMs !== undefined) payload.timeout_ms = timeoutMs;
+							if (cacheTtlSeconds !== undefined) payload.cache_ttl_seconds = cacheTtlSeconds;
+							if (outputMap !== undefined) payload.output_map = outputMap;
+							if (headersTemplate !== undefined) payload.headers_template = headersTemplate;
+							if (queryTemplate !== undefined) payload.query_template = queryTemplate;
+							if (bodyTemplate !== undefined) payload.body_template = bodyTemplate;
+							if (authConfig !== undefined) payload.auth_config = authConfig;
+							if (authType !== 'omit') payload.auth_type = authType;
+							if (authSecret) payload.auth_secret = authSecret;
+							if (webhookSecret) payload.webhook_secret = webhookSecret;
+							if (Object.keys(payload).length === 0) {
+								throw new NodeOperationError(node, 'Provide at least one field to update for integration', {
+									itemIndex: i,
+								});
+							}
+							body = payload;
+						} else if (operation === 'delete') {
+							method = 'DELETE';
+							path = `/api/v1/integrations/${encodeURIComponent(this.getNodeParameter('integrationId', i) as string)}`;
+						} else if (operation === 'test' || operation === 'sync') {
+							method = 'POST';
+							path = `/api/v1/integrations/${encodeURIComponent(this.getNodeParameter('integrationId', i) as string)}/${operation}`;
+							const payload: IDataObject = {};
+							const subjectId = (this.getNodeParameter('integrationRuntimeSubjectId', i, '') as string).trim();
+							const chatId = (this.getNodeParameter('integrationRuntimeChatId', i, '') as string).trim();
+							if (subjectId) payload.subject_id = subjectId;
+							if (chatId) payload.chat_id = chatId;
+							body = payload;
+						} else if (operation === 'webhook') {
+							method = 'POST';
+							path = `/api/v1/integrations/${encodeURIComponent(this.getNodeParameter('integrationId', i) as string)}/webhook`;
+							const payload = parseJsonObject(
+								this.getNodeParameter('integrationWebhookPayloadJson', i, '{}'),
+								'Integration Webhook Payload',
+								i,
+								node,
+							);
+							const rawBody = JSON.stringify(payload);
+							const timestampInput = (this.getNodeParameter('integrationWebhookTimestamp', i, '') as string).trim();
+							const timestamp = timestampInput || String(Math.floor(Date.now() / 1000));
+							const providedSignature = normalizeWebhookSignature(
+								this.getNodeParameter('integrationWebhookSignature', i, ''),
+							);
+							const secret = (this.getNodeParameter('integrationWebhookSecret', i, '') as string).trim();
+							const signature = providedSignature || (secret ? computeWebhookSignature(secret, timestamp, rawBody) : '');
+							if (!signature) {
+								throw new NodeOperationError(
+									node,
+									'Webhook Signature or Webhook Secret is required for integration webhook requests',
+									{ itemIndex: i },
+								);
+							}
+							headers['x-mnx-webhook-timestamp'] = timestamp;
+							headers['x-mnx-webhook-signature'] = signature;
+							const eventId = (this.getNodeParameter('integrationWebhookEventId', i, '') as string).trim();
+							const projectId = (this.getNodeParameter('integrationWebhookProjectId', i, '') as string).trim();
+							const subjectId = (this.getNodeParameter('integrationWebhookSubjectId', i, '') as string).trim();
+							const chatId = (this.getNodeParameter('integrationWebhookChatId', i, '') as string).trim();
+							if (eventId) headers['x-event-id'] = eventId;
+							if (projectId) headers['x-mnx-project-id'] = projectId;
+							if (subjectId) headers['x-mnx-subject-id'] = subjectId;
+							if (chatId) headers['x-mnx-chat-id'] = chatId;
+							sendBodyAsJson = false;
+							rawRequestBody = rawBody;
+						}
+						break;
+					}
+
 					case 'memoryPolicy': {
 						if (operation === 'list') {
 							path = '/api/v1/memory/policies';
@@ -677,7 +889,7 @@ export class Mnexium implements INodeType {
 				const requestOptions: IHttpRequestOptions = {
 					method,
 					url: url || `${baseUrl}${path}`,
-					json: true,
+					json: sendBodyAsJson,
 				};
 
 				if (credentialApiKey && !hasHeader(headers, 'x-mnexium-key') && !hasHeader(headers, 'authorization')) {
@@ -694,9 +906,20 @@ export class Mnexium implements INodeType {
 
 				if (body !== undefined && method !== 'GET') {
 					requestOptions.body = body as IHttpRequestOptions['body'];
+				} else if (rawRequestBody !== undefined && method !== 'GET') {
+					requestOptions.body = rawRequestBody as unknown as IHttpRequestOptions['body'];
 				}
 
-				const responseData = await this.helpers.httpRequest(requestOptions);
+				const responseDataRaw = await this.helpers.httpRequest(requestOptions);
+				const responseData = typeof responseDataRaw === 'string'
+					? (() => {
+						try {
+							return JSON.parse(responseDataRaw) as IDataObject;
+						} catch {
+							return responseDataRaw;
+						}
+					})()
+					: responseDataRaw;
 
 				if (Array.isArray(responseData)) {
 					returnData.push({

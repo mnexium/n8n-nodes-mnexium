@@ -1,3 +1,5 @@
+import { createHmac } from 'crypto';
+
 import { NodeOperationError, type IDataObject, type INode } from 'n8n-workflow';
 
 export function ensurePath(path: string): string {
@@ -71,6 +73,28 @@ export function parseJsonArray(
 	throw new NodeOperationError(node, `${label} must be a JSON array`, { itemIndex });
 }
 
+export function parseOptionalJsonObject(
+	raw: unknown,
+	label: string,
+	itemIndex: number,
+	node: INode,
+): IDataObject | undefined {
+	if (raw === undefined || raw === null) return undefined;
+	if (typeof raw === 'string' && raw.trim() === '') return undefined;
+	return parseJsonObject(raw, label, itemIndex, node);
+}
+
+export function parseOptionalJsonArray(
+	raw: unknown,
+	label: string,
+	itemIndex: number,
+	node: INode,
+): unknown[] | undefined {
+	if (raw === undefined || raw === null) return undefined;
+	if (typeof raw === 'string' && raw.trim() === '') return undefined;
+	return parseJsonArray(raw, label, itemIndex, node);
+}
+
 export function parseOptionalNumberString(
 	raw: unknown,
 	label: string,
@@ -122,6 +146,16 @@ export function parseBooleanParam(value: unknown): boolean {
 		if (['false', '0', 'no', 'off', ''].includes(normalized)) return false;
 	}
 	return false;
+}
+
+export function normalizeWebhookSignature(signature: unknown): string {
+	return String(signature || '').trim().replace(/^sha256=/i, '').toLowerCase();
+}
+
+export function computeWebhookSignature(secret: string, timestamp: string | number, rawBody: string): string {
+	return createHmac('sha256', String(secret || ''))
+		.update(`${String(timestamp || '')}.${String(rawBody || '')}`)
+		.digest('hex');
 }
 
 function parseUserMessageContent(content: unknown): string {

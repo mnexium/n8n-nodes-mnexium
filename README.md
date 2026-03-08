@@ -44,6 +44,7 @@ Notes:
 | Record | List, Create, Get, Update, Delete, Query, Search |
 | System Prompt | List, Create, Get, Update, Delete, Resolve |
 | Memory Policy | List, Create, Get, Update, Delete, Resolve |
+| Integration | List, Create, Get, Update, Delete, Test Pull, Sync Cache, Send Webhook |
 | Audit | List |
 | Custom Request | Custom API Call |
 
@@ -67,6 +68,25 @@ For `Chat -> Message a Model`:
   - `Records Tables (JSON Array)`: allowlist for extraction targets
   - `Records Sync`: wait for write completion before response
   - `Records Recall`: inject relevant records into context
+
+## Integrations
+
+Use `Resource: Integration` when you want typed access to Mnexium inbound connectors instead of building raw custom requests.
+
+Supported integration operations:
+
+- `List`: fetch project integrations, with optional inactive rows.
+- `Create`: define pull/webhook connectors with templates, output mappings, auth, and webhook secrets.
+- `Get` / `Update` / `Delete`: inspect and manage existing connector configs.
+- `Test Pull`: execute `/api/v1/integrations/:id/test` without writing cache.
+- `Sync Cache`: execute `/api/v1/integrations/:id/sync` and persist mapped values.
+- `Send Webhook`: sign and send payloads to `/api/v1/integrations/:id/webhook`.
+
+Webhook notes:
+
+- Provide either `Webhook Signature` directly or a `Webhook Secret` so the node can compute the HMAC header.
+- If `Timestamp` is empty, the node sends the current Unix timestamp.
+- Optional `Event ID` supports backend deduplication.
 
 ## Custom API Call
 
